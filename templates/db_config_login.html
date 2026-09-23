@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Configuration · Login</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    html, body { overflow-y: auto; }
+    .login-wrap {
+      max-width: 420px; margin: 80px auto; padding: 32px;
+      background: #fff; border-radius: 8px; border: 1px solid #e5e7eb;
+      box-shadow: 0 4px 16px rgba(0,0,0,.05);
+    }
+    .login-wrap h2 {
+      font-size: 18px; color: #744ec2; margin-bottom: 6px;
+    }
+    .login-wrap .sub {
+      font-size: 12px; color: #6b7280; margin-bottom: 24px;
+    }
+    .login-wrap label {
+      display: block; font-size: 12px; font-weight: 600;
+      color: #374151; margin-bottom: 6px;
+    }
+    .login-wrap input {
+      width: 100%; padding: 8px 12px; font-size: 13px;
+      border: 1px solid #d1d5db; border-radius: 4px;
+    }
+    .login-wrap input:focus {
+      outline: none; border-color: #744ec2;
+      box-shadow: 0 0 0 3px rgba(116,78,194,.15);
+    }
+    .login-wrap button {
+      width: 100%; margin-top: 16px; padding: 10px;
+      background: #744ec2; color: #fff; font-size: 13px; font-weight: 600;
+      border: none; border-radius: 4px; cursor: pointer;
+    }
+    .login-wrap button:hover { background: #5f3fa0; }
+    .login-err {
+      background: #fef2f2; color: #991b1b; border-left: 4px solid #ef4444;
+      padding: 8px 12px; border-radius: 4px; font-size: 12px; margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <img src="{{ url_for('static', filename='aeon_logo.png') }}" alt="AEON delight" class="logo-img">
+    </div>
+    <div class="header-center">
+      <h1>設定 Configuration</h1>
+      <h2>Admin Login</h2>
+    </div>
+    <div class="header-right"></div>
+  </header>
+
+  <nav class="tab-nav">
+    <a href="/" class="tab-link">電腦及SIM卡管理 Device Management</a>
+    <details class="nav-menu">
+      <summary aria-label="Menu">☰</summary>
+      <div class="nav-menu-list">
+        <a href="/config" target="_blank" rel="noopener">設定 Configuration ↗</a>
+        <a href="https://aeon-iot-dashboard.zeabur.app/" target="_blank" rel="noopener">智能廁所 Smart Toilet Monitor ↗</a>
+        <a href="https://aeon-iot.zeabur.app/" target="_blank" rel="noopener">API Manager ↗</a>
+      </div>
+    </details>
+  </nav>
+
+  <div class="login-wrap">
+    <h2>Admin Access Required</h2>
+    <div class="sub">Enter the admin password to view and edit database settings.</div>
+
+    {% if error %}
+    <div class="login-err">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('config_login') }}">
+      <label for="password">Admin password</label>
+      <input type="password" name="password" id="password" autofocus required>
+      <button type="submit">Login</button>
+    </form>
+  </div>
+</body>
+</html>

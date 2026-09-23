@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Device Management — AEON Delight</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="page-devmgmt">
+    <header>
+        <div class="header-left">
+            <img src="{{ url_for('static', filename='aeon_logo.png') }}" alt="AEON delight" class="logo-img">
+        </div>
+        <div class="header-center">
+            <h1>電腦及SIM卡管理</h1>
+            <h2>Laptops &amp; SIM Card Management</h2>
+        </div>
+        <div class="header-right">
+            <div class="last-update">
+                <div class="muted">Last synced</div>
+                <div id="last-synced">—</div>
+                <div style="display:flex; gap:6px; margin-top:2px; justify-content:flex-end;">
+                    <button id="upload-btn" class="page-btn" title="Upload ADG Software Lic & Subscribe.xlsx">📤 Upload Excel</button>
+                    <button id="refresh-btn" class="page-btn">↻ Refresh</button>
+                </div>
+                <input type="file" id="upload-input" accept=".xlsx" style="display:none;">
+            </div>
+        </div>
+    </header>
+
+    <nav class="tab-nav">
+        <a href="/" class="tab-link active">電腦及SIM卡管理 Device Management</a>
+        <details class="nav-menu">
+            <summary aria-label="Menu">☰</summary>
+            <div class="nav-menu-list">
+                <a href="/config" target="_blank" rel="noopener">設定 Configuration ↗</a>
+                <a href="https://aeon-iot-dashboard.zeabur.app/" target="_blank" rel="noopener">智能廁所 Smart Toilet Monitor ↗</a>
+                <a href="https://aeon-iot.zeabur.app/" target="_blank" rel="noopener">API Manager ↗</a>
+            </div>
+        </details>
+    </nav>
+
+    <!-- ── Site filter bar (filters BOTH Laptop and SIM tables) ── -->
+    <div class="category-bar">
+        <label>位置 Site:</label>
+        <div id="category-pills" class="category-pills"></div>
+    </div>
+
+    <main>
+        <!-- ── Laptops section ─────────────────────────────── -->
+        <section class="dm-section">
+            <div class="dm-icon-col">
+                <img src="{{ url_for('static', filename='laptop_icon.jpg') }}" alt="Laptops" class="dm-big-icon-img">
+                <div class="dm-section-title">Laptops<br>電腦</div>
+            </div>
+            <div class="dm-stats-col">
+                <div class="stat-row-group">
+                    <div class="stat-card">
+                        <span class="stat-value" id="laptop-total">—</span>
+                        <span class="stat-label">Total 總數</span>
+                    </div>
+                    <div class="stat-card spared">
+                        <span class="stat-value" id="laptop-spared">—</span>
+                        <span class="stat-label">Spared 備用</span>
+                    </div>
+                </div>
+                <div class="spared-list-wrap">
+                    <div class="spared-list-title">Spared Devices 備用裝置</div>
+                    <table class="spared-list">
+                        <thead><tr><th>Brand</th><th>Model</th><th>Serial</th></tr></thead>
+                        <tbody id="spared-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="dm-table-col">
+                <table class="dm-table">
+                    <thead>
+                        <tr>
+                            <th>Serial number</th>
+                            <th>Device name</th>
+                            <th>Brand</th>
+                            <th>Model</th>
+                            <th>Primary user</th>
+                            <th>Enroll date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="laptop-tbody"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ── SIM Cards section ───────────────────────────── -->
+        <section class="dm-section">
+            <div class="dm-icon-col">
+                <img src="{{ url_for('static', filename='sim_icon.png') }}" alt="SIM Cards" class="dm-big-icon-img">
+                <div class="dm-section-title">SIM Cards<br>電話卡</div>
+            </div>
+            <div class="dm-stats-col">
+                <div class="stat-row-group">
+                    <div class="stat-card">
+                        <span class="stat-value" id="sim-total">—</span>
+                        <span class="stat-label">Total 總數</span>
+                    </div>
+                    <div class="stat-card expiring">
+                        <span class="stat-value" id="sim-expiring">—</span>
+                        <span class="stat-label">Expiring ≤ 30d 30天內到期</span>
+                    </div>
+                </div>
+            </div>
+            <div class="dm-table-col">
+                <table class="dm-table">
+                    <thead>
+                        <tr>
+                            <th>Telcom</th>
+                            <th>SIM No</th>
+                            <th>Contract No</th>
+                            <th>Fee</th>
+                            <th>Owner</th>
+                            <th>Start</th>
+                            <th>End</th>
+                            <th>Days</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sim-tbody"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script src="{{ url_for('static', filename='device_management.js') }}"></script>
+</body>
+</html>

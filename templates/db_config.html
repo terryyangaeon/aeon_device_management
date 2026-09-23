@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DB Configuration · Device Management</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    html, body { overflow-y: auto; }
+    .cfg-wrap { max-width: 900px; margin: 20px auto; padding: 0 20px; }
+    .cfg-card {
+      background: #fff; border: 1px solid #e5e7eb; border-radius: 8px;
+      padding: 20px 24px; margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.04);
+    }
+    .cfg-card h3 {
+      font-size: 15px; color: #374151; margin-bottom: 14px;
+      padding-bottom: 8px; border-bottom: 1px solid #f3f4f6;
+    }
+    .cfg-banner {
+      padding: 10px 14px; border-radius: 6px; margin-bottom: 16px;
+      font-size: 12px; display: flex; align-items: center; gap: 8px;
+    }
+    .cfg-banner.info    { background: #eff6ff; color: #1e40af; border-left: 4px solid #3b82f6; }
+    .cfg-banner.warning { background: #fefce8; color: #854d0e; border-left: 4px solid #eab308; }
+    .cfg-banner.success { background: #f0fdf4; color: #166534; border-left: 4px solid #22c55e; }
+
+    .cfg-row { display: grid; grid-template-columns: 160px 1fr; gap: 12px; align-items: center; margin-bottom: 12px; }
+    .cfg-row label { font-size: 12px; color: #374151; font-weight: 600; }
+    .cfg-row input, .cfg-row select {
+      padding: 6px 10px; font-size: 12px; border: 1px solid #d1d5db;
+      border-radius: 4px; background: #fff; width: 100%;
+    }
+    .cfg-row input:focus, .cfg-row select:focus {
+      outline: none; border-color: #744ec2; box-shadow: 0 0 0 3px rgba(116,78,194,.15);
+    }
+    .cfg-row .hint { grid-column: 2; font-size: 10px; color: #6b7280; margin-top: 2px; }
+
+    .cfg-actions { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+    .cfg-btn {
+      padding: 8px 16px; font-size: 12px; font-weight: 600;
+      border: none; border-radius: 4px; cursor: pointer;
+      transition: background .15s;
+    }
+    .cfg-btn-primary   { background: #744ec2; color: #fff; }
+    .cfg-btn-primary:hover:not(:disabled) { background: #5f3fa0; }
+    .cfg-btn-secondary { background: #fff; color: #374151; border: 1px solid #d1d5db; }
+    .cfg-btn-secondary:hover:not(:disabled) { background: #f9fafb; }
+    .cfg-btn-danger    { background: #fff; color: #b91c1c; border: 1px solid #fecaca; margin-left: auto; }
+    .cfg-btn-danger:hover:not(:disabled) { background: #fef2f2; }
+    .cfg-btn:disabled { opacity: .5; cursor: wait; }
+
+    .cfg-result {
+      margin-top: 12px; padding: 10px 14px; border-radius: 6px;
+      font-size: 12px; font-family: "Consolas", "Menlo", monospace;
+      display: none;
+    }
+    .cfg-result.ok   { background: #f0fdf4; color: #166534; border-left: 4px solid #22c55e; display: block; }
+    .cfg-result.err  { background: #fef2f2; color: #991b1b; border-left: 4px solid #ef4444; display: block; }
+    .cfg-result.wait { background: #f3f4f6; color: #6b7280; border-left: 4px solid #9ca3af; display: block; }
+
+    .cfg-engine-hint { font-size: 10px; color: #6b7280; font-style: italic; }
+    .mssql-only, .pg-only { display: none; }
+    body.eng-mssql .mssql-only { display: grid; }
+    body.eng-postgresql .pg-only { display: grid; }
+
+    /* Password field with eye toggle */
+    .pw-wrap { position: relative; }
+    .pw-wrap input { padding-right: 36px; }
+    .pw-eye {
+      position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+      background: transparent; border: none; padding: 4px 8px; cursor: pointer;
+      color: #6b7280; font-size: 14px; line-height: 1; border-radius: 4px;
+    }
+    .pw-eye:hover { color: #374151; background: #f3f4f6; }
+    .pw-eye:focus { outline: 2px solid #744ec2; outline-offset: -2px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <img src="{{ url_for('static', filename='aeon_logo.png') }}" alt="AEON delight" class="logo-img">
+    </div>
+    <div class="header-center">
+      <h1>設定 Configuration</h1>
+      <h2>Database Connection</h2>
+    </div>
+    <div class="header-right">
+      <div class="last-update">
+        <div class="muted">Logged in as admin</div>
+        <div><a href="{{ url_for('config_logout') }}" style="color:#744ec2;">Logout</a></div>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tab-nav">
+    <a href="/" class="tab-link">電腦及SIM卡管理 Device Management</a>
+    <details class="nav-menu">
+      <summary aria-label="Menu">☰</summary>
+      <div class="nav-menu-list">
+        <a href="/config" target="_blank" rel="noopener">設定 Configuration ↗</a>
+        <a href="https://aeon-iot-dashboard.zeabur.app/" target="_blank" rel="noopener">智能廁所 Smart Toilet Monitor ↗</a>
+        <a href="https://aeon-iot.zeabur.app/" target="_blank" rel="noopener">API Manager ↗</a>
+      </div>
+    </details>
+  </nav>
+
+  <div class="cfg-wrap">
+
+    {% if cfg.source == "env" %}
+    <div class="cfg-banner info">
+      <b>Fallback active:</b> No saved connection — the app is using the
+      <code>DATABASE_URL</code> environment variable. Save below to override.
+    </div>
+    {% else %}
+    <div class="cfg-banner success">
+      <b>Custom connection saved.</b> Engine:
+      <b>{{ cfg.engine|upper }}</b> · Host: <b>{{ cfg.host }}:{{ cfg.port }}</b> ·
+      DB: <b>{{ cfg.database }}</b>
+    </div>
+    {% endif %}
+
+    {% if cfg.engine == "mssql" %}
+    <div class="cfg-banner warning">
+      <b>MSSQL compatibility:</b> the connection works, but the app's queries
+      use PostgreSQL syntax. Live pages will error until MSSQL-equivalent
+      tables are provided on the target server.
+    </div>
+    {% endif %}
+
+    <div class="cfg-card">
+      <h3>Connection details</h3>
+
+      <div class="cfg-row">
+        <label for="engine">Engine</label>
+        <select id="engine" name="engine">
+          <option value="postgresql" {% if cfg.engine == "postgresql" %}selected{% endif %}>PostgreSQL</option>
+          <option value="mssql"      {% if cfg.engine == "mssql" %}selected{% endif %}>Microsoft SQL Server</option>
+        </select>
+      </div>
+
+      <div class="cfg-row">
+        <label for="server_type">Server type</label>
+        <select id="server_type" name="server_type">
+          <option value="local" {% if cfg.server_type == "local" %}selected{% endif %}>Local server</option>
+          <option value="cloud" {% if cfg.server_type == "cloud" %}selected{% endif %}>Cloud server</option>
+        </select>
+        <div class="hint">Cosmetic label — does not affect the connection.</div>
+      </div>
+
+      <div class="cfg-row">
+        <label for="host">Host</label>
+        <input type="text" id="host" name="host" value="{{ cfg.host or '' }}" placeholder="e.g. sfo1.clusters.zeabur.com">
+      </div>
+
+      <div class="cfg-row">
+        <label for="port">Port</label>
+        <input type="number" id="port" name="port" value="{{ cfg.port or '' }}" placeholder="5432 (PG) or 1433 (MSSQL)">
+      </div>
+
+      <div class="cfg-row">
+        <label for="database">Database name</label>
+        <input type="text" id="database" name="database" value="{{ cfg.database or '' }}" placeholder="e.g. zeabur">
+      </div>
+
+      <div class="cfg-row">
+        <label for="user">Username</label>
+        <input type="text" id="user" name="user" value="{{ cfg.user or '' }}" placeholder="e.g. root">
+      </div>
+
+      <div class="cfg-row">
+        <label for="password">Password</label>
+        <div class="pw-wrap">
+          <input type="password" id="password" name="password" value="{{ cfg.password or '' }}" placeholder="stored in plain text on disk">
+          <button type="button" class="pw-eye" id="btn-pw-toggle"
+                  aria-label="Show password" title="Show password"
+                  onclick="togglePw()">
+            <svg id="pw-eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="cfg-row pg-only">
+        <label for="sslmode">SSL mode</label>
+        <select id="sslmode" name="sslmode">
+          <option value="disable"     {% if cfg.sslmode == "disable" %}selected{% endif %}>disable</option>
+          <option value="allow"       {% if cfg.sslmode == "allow" %}selected{% endif %}>allow</option>
+          <option value="prefer"      {% if cfg.sslmode == "prefer" or not cfg.sslmode %}selected{% endif %}>prefer (default)</option>
+          <option value="require"     {% if cfg.sslmode == "require" %}selected{% endif %}>require</option>
+          <option value="verify-ca"   {% if cfg.sslmode == "verify-ca" %}selected{% endif %}>verify-ca</option>
+          <option value="verify-full" {% if cfg.sslmode == "verify-full" %}selected{% endif %}>verify-full</option>
+        </select>
+      </div>
+
+      <div class="cfg-row mssql-only">
+        <label for="odbc_driver">ODBC driver</label>
+        <input type="text" id="odbc_driver" name="odbc_driver"
+               value="{{ cfg.odbc_driver or 'ODBC Driver 18 for SQL Server' }}"
+               placeholder="ODBC Driver 18 for SQL Server">
+        <div class="hint">Must match a driver installed on this host (see MS ODBC Driver 17 / 18).</div>
+      </div>
+
+      <div class="cfg-row mssql-only">
+        <label for="trust_certificate">Trust server cert</label>
+        <select id="trust_certificate" name="trust_certificate">
+          <option value="true"  {% if cfg.trust_certificate != False %}selected{% endif %}>Yes (recommended for self-signed)</option>
+          <option value="false" {% if cfg.trust_certificate == False %}selected{% endif %}>No</option>
+        </select>
+      </div>
+
+      <div class="cfg-actions">
+        <button type="button" class="cfg-btn cfg-btn-secondary" id="btn-test">Test Connection</button>
+        <button type="button" class="cfg-btn cfg-btn-primary"   id="btn-save">Save &amp; Apply</button>
+        <button type="button" class="cfg-btn cfg-btn-danger"    id="btn-reset">Revert to env DATABASE_URL</button>
+      </div>
+
+      <div id="result" class="cfg-result"></div>
+    </div>
+
+    <div class="cfg-card">
+      <h3>Notes</h3>
+      <ul style="font-size: 12px; color: #4b5563; line-height: 1.6; padding-left: 20px;">
+        <li>Config is written to <code>db_config.json</code> (git-ignored). Password is stored in plain text.</li>
+        <li>Postgres uses <code>psycopg2</code> (built-in). MSSQL uses <code>pyodbc</code> + Microsoft ODBC Driver 18.</li>
+        <li>Save rebuilds the connection pool immediately — no restart needed.</li>
+        <li>Revert removes the config file and falls back to the <code>DATABASE_URL</code> env var this process was launched with.</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <script>
+    function readForm() {
+      const cfg = {
+        engine:      document.getElementById("engine").value,
+        server_type: document.getElementById("server_type").value,
+        host:        document.getElementById("host").value.trim(),
+        port:        parseInt(document.getElementById("port").value, 10) || null,
+        database:    document.getElementById("database").value.trim(),
+        user:        document.getElementById("user").value,
+        password:    document.getElementById("password").value,
+      };
+      if (cfg.engine === "postgresql") {
+        cfg.sslmode = document.getElementById("sslmode").value;
+      } else {
+        cfg.odbc_driver       = document.getElementById("odbc_driver").value.trim();
+        cfg.trust_certificate = document.getElementById("trust_certificate").value === "true";
+      }
+      return cfg;
+    }
+
+    function setBodyEngineClass() {
+      const eng = document.getElementById("engine").value;
+      document.body.classList.remove("eng-postgresql", "eng-mssql");
+      document.body.classList.add("eng-" + eng);
+      // Nudge default port
+      const portEl = document.getElementById("port");
+      if (!portEl.value || portEl.value === "5432" || portEl.value === "1433") {
+        portEl.value = eng === "mssql" ? 1433 : 5432;
+      }
+    }
+
+    function showResult(kind, text) {
+      const el = document.getElementById("result");
+      el.className = "cfg-result " + kind;
+      el.textContent = text;
+    }
+
+    document.getElementById("engine").addEventListener("change", setBodyEngineClass);
+    setBodyEngineClass();
+
+    // Password show/hide toggle
+    const EYE_OPEN = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+    const EYE_OFF  = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+    window.togglePw = function () {
+      const inp = document.getElementById("password");
+      const btn = document.getElementById("btn-pw-toggle");
+      const showing = inp.type === "text";
+      inp.type = showing ? "password" : "text";
+      btn.innerHTML = showing ? EYE_OPEN : EYE_OFF;
+      btn.setAttribute("aria-label", showing ? "Show password" : "Hide password");
+      btn.setAttribute("title",      showing ? "Show password" : "Hide password");
+    };
+
+    document.getElementById("btn-test").addEventListener("click", async () => {
+      const btn = document.getElementById("btn-test");
+      btn.disabled = true; showResult("wait", "Testing connection…");
+      try {
+        const r = await fetch("/api/config/test", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(readForm()),
+        });
+        const j = await r.json();
+        if (j.ok) {
+          showResult("ok", `✓ ${j.message}` + (j.server_version ? ` — ${j.server_version}` : ""));
+        } else {
+          showResult("err", `✗ ${j.message}`);
+        }
+      } catch (e) {
+        showResult("err", `✗ Request failed: ${e.message}`);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById("btn-save").addEventListener("click", async () => {
+      if (!confirm("Save this connection and switch the app to it now?")) return;
+      const btn = document.getElementById("btn-save");
+      btn.disabled = true; showResult("wait", "Saving…");
+      try {
+        const r = await fetch("/api/config/save", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(readForm()),
+        });
+        const j = await r.json();
+        if (j.ok) {
+          showResult("ok", "✓ Saved and applied. Reloading…");
+          setTimeout(() => location.reload(), 900);
+        } else {
+          showResult("err", `✗ ${j.message}`);
+        }
+      } catch (e) {
+        showResult("err", `✗ Request failed: ${e.message}`);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById("btn-reset").addEventListener("click", async () => {
+      if (!confirm("Delete db_config.json and revert to the DATABASE_URL env var?")) return;
+      const btn = document.getElementById("btn-reset");
+      btn.disabled = true; showResult("wait", "Reverting…");
+      try {
+        const r = await fetch("/api/config/reset", { method: "POST" });
+        const j = await r.json();
+        if (j.ok) {
+          showResult("ok", "✓ Reverted. Reloading…");
+          setTimeout(() => location.reload(), 900);
+        } else {
+          showResult("err", `✗ ${j.message}`);
+        }
+      } catch (e) {
+        showResult("err", `✗ Request failed: ${e.message}`);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

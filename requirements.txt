@@ -1,0 +1,7 @@
+flask==3.0.3
+psycopg2-binary==2.9.10
+gunicorn==23.0.0
+openpyxl==3.1.5
+# Optional — for Microsoft SQL Server via the Configuration page.
+# Requires Microsoft ODBC Driver 17 or 18 to be installed on the host.
+pyodbc==5.1.0
