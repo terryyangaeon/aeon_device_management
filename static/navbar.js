@@ -21,4 +21,16 @@
     window.addEventListener("resize", function () { if (!menu.hidden) place(); });
     document.addEventListener("click", function (e) { if (!menu.contains(e.target)) close(); });
     document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+
+    menu.addEventListener("click", function (e) {
+        var b = e.target.closest("button[data-action]");
+        if (!b) return;
+        var action = b.getAttribute("data-action");
+        close();
+        if (action === "changepw" && window.openChangePassword) {
+            window.openChangePassword();
+        } else if (action === "logout") {
+            fetch("/api/auth/logout", { method: "POST" }).then(function () { location.href = "/login"; });
+        }
+    });
 })();

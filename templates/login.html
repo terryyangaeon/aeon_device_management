@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in — Device Management</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<style>
+  html, body { height: auto; overflow: auto; }
+  body { align-items: center; justify-content: center; padding: 20px; background: #f4f6fa; min-height: 100vh; }
+  .login-box {
+    background: #fff; border-radius: 16px; padding: 30px 28px; width: 100%; max-width: 400px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.12); margin: 60px auto;
+  }
+  .login-box .brand-center { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-bottom: 18px; }
+  .login-box .brand-center img { height: 56px; }
+  .login-box .brand-center .l1 { font-size: 18px; font-weight: 800; color: #1c1917; }
+  .login-box .brand-center .l2 { font-size: 13px; font-weight: 600; color: #90207a; }
+  .login-box label { display: block; font-size: 12px; color: #78716c; font-weight: 600; margin: 12px 0 4px; text-transform: uppercase; letter-spacing: .04em; }
+  .login-box input[type=email], .login-box input[type=password] {
+    width: 100%; padding: 11px 12px; border: 1px solid #d6d3d1; border-radius: 9px; font: inherit; background: #fff; color: #1c1917;
+  }
+  .login-box input:focus { outline: 2px solid #FFCC00; border-color: #FFCC00; }
+  .pw-wrap { position: relative; }
+  .pw-wrap input { padding-right: 44px; }
+  .pw-eye { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border: 0; background: transparent; color: #78716c; border-radius: 6px; cursor: pointer; padding: 0; }
+  .pw-eye:hover { background: #f5f5f4; color: #1c1917; }
+  .pw-eye svg { width: 20px; height: 20px; display: block; }
+  .login-btn { width: 100%; margin-top: 18px; padding: 12px; border: 0; border-radius: 9px; background: #90207a; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+  .login-btn:hover { background: #741964; }
+  .login-err { color: #b91c1c; font-size: 13px; min-height: 18px; margin-top: 12px; text-align: center; }
+</style>
+</head>
+<body>
+  <div class="login-box">
+    <div class="brand-center">
+      <img src="{{ url_for('static', filename='aeon_logo.png') }}" alt="AEON delight">
+      <div class="l1">AEON delight</div>
+      <div class="l2">Device Management</div>
+    </div>
+
+    <form id="loginForm">
+      <label for="lEmail">Email</label>
+      <input type="email" id="lEmail" autocomplete="email" placeholder="you@aeondelightasia.com" required>
+
+      <label for="lPass">Password</label>
+      <div class="pw-wrap">
+        <input type="password" id="lPass" autocomplete="current-password" placeholder="Your password" required>
+        <button type="button" class="pw-eye" id="lEye" aria-label="Show password">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+
+      <button class="login-btn" type="submit" id="lBtn">Sign in</button>
+    </form>
+
+    <div class="login-err" id="err"></div>
+  </div>
+
+<script>
+  var $ = function (s) { return document.querySelector(s); };
+
+  function nextUrl() { var m = location.search.match(/[?&]next=([^&]+)/); return m ? decodeURIComponent(m[1]) : "/"; }
+
+  var EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>';
+  var EYE_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+  $("#lEye").addEventListener("click", function () {
+    var p = $("#lPass");
+    var reveal = p.type === "password";
+    p.type = reveal ? "text" : "password";
+    $("#lEye").innerHTML = reveal ? EYE_OFF : EYE;
+    p.focus();
+  });
+
+  $("#loginForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    $("#err").textContent = "";
+    var email = $("#lEmail").value.trim(), password = $("#lPass").value;
+    $("#lBtn").disabled = true;
+    fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: email, password: password }) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        $("#lBtn").disabled = false;
+        if (res.ok) { location.href = nextUrl(); }
+        else { $("#err").textContent = res.j.message || "Sign in failed."; }
+      })
+      .catch(function () { $("#lBtn").disabled = false; $("#err").textContent = "Network error."; });
+  });
+</script>
+</body>
+</html>

@@ -21,14 +21,28 @@
                 </svg>
             </button>
             <div class="menu" id="menu" hidden>
+                <div class="who">
+                    <div class="r">{{ user.name or user.email }}</div>
+                    <div class="s">{{ "Admin — all sites" if user.role == "admin" else "User — " + (user.sites|join(", ") if user.sites else "no sites granted") }}</div>
+                </div>
+                {% if user.role == "admin" %}
+                <a href="/accounts">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    帳戶管理 Account Management
+                </a>
+                {% endif %}
                 <a href="/config">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                     設定 Configuration
                 </a>
-                <a href="/config/logout">
+                <button type="button" data-action="changepw">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.6 7.6a5.5 5.5 0 1 1-7.78 7.78 5.5 5.5 0 0 1 7.78-7.78zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3"/></svg>
+                    更改密碼 Change password
+                </button>
+                <button type="button" data-action="logout">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
-                    Logout
-                </a>
+                    登出 Sign out
+                </button>
             </div>
         </div>
     </header>
@@ -43,10 +57,14 @@
                 <div class="muted">Last synced</div>
                 <div id="last-synced">—</div>
                 <div style="display:flex; gap:6px; margin-top:2px; justify-content:flex-end;">
+                    {% if user.role == "admin" %}
                     <button id="upload-btn" class="page-btn" title="Upload ADG Software Lic & Subscribe.xlsx">📤 Upload Excel</button>
+                    {% endif %}
                     <button id="refresh-btn" class="page-btn">↻ Refresh</button>
                 </div>
+                {% if user.role == "admin" %}
                 <input type="file" id="upload-input" accept=".xlsx" style="display:none;">
+                {% endif %}
             </div>
         </div>
     </div>
@@ -140,6 +158,7 @@
     </main>
 
     <script src="{{ url_for('static', filename='navbar.js') }}"></script>
+    <script src="{{ url_for('static', filename='change-password.js') }}"></script>
     <script src="{{ url_for('static', filename='device_management.js') }}"></script>
 </body>
 </html>

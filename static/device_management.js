@@ -73,6 +73,7 @@ function laptopSite(r) {
 async function load() {
     try {
         const r = await fetch("/api/device-management", { cache: "no-store" });
+        if (r.status === 401) { location.href = "/login?next=" + encodeURIComponent(location.pathname); return; }
         const j = await r.json();
         if (!j.ok) throw new Error(j.message || "API error");
         allLaptops = j.data.laptops || [];
@@ -249,40 +250,42 @@ function fmtDate(v) {
 
 document.getElementById("refresh-btn").addEventListener("click", load);
 
-// ── Excel upload ──────────────────────────────────────────────
+// ── Excel upload (admin only — button/input aren't rendered for other roles) ──
 const uploadBtn   = document.getElementById("upload-btn");
 const uploadInput = document.getElementById("upload-input");
-uploadBtn.addEventListener("click", () => uploadInput.click());
+if (uploadBtn && uploadInput) {
+    uploadBtn.addEventListener("click", () => uploadInput.click());
 
-uploadInput.addEventListener("change", async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    uploadInput.addEventListener("change", async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
 
-    if (!confirm(`Upload "${file.name}" and replace all device-management data?`)) {
-        uploadInput.value = "";
-        return;
-    }
+        if (!confirm(`Upload "${file.name}" and replace all device-management data?`)) {
+            uploadInput.value = "";
+            return;
+        }
 
-    const origText = uploadBtn.textContent;
-    uploadBtn.disabled = true;
-    uploadBtn.textContent = "⏳ Uploading…";
+        const origText = uploadBtn.textContent;
+        uploadBtn.disabled = true;
+        uploadBtn.textContent = "⏳ Uploading…";
 
-    try {
-        const fd = new FormData();
-        fd.append("file", file);
-        const r = await fetch("/api/device-management/upload", { method: "POST", body: fd });
-        const j = await r.json();
-        if (!j.ok) throw new Error(j.message || `HTTP ${r.status}`);
-        alert(`✅ Sync complete\n\nLaptops: ${j.laptops_count}\nSIM Cards: ${j.sims_count}`);
-        await load();
-    } catch (err) {
-        alert(`❌ Upload failed:\n\n${err.message}`);
-        console.error(err);
-    } finally {
-        uploadBtn.disabled = false;
-        uploadBtn.textContent = origText;
-        uploadInput.value = "";   // reset so same file can be uploaded again
-    }
-});
+        try {
+            const fd = new FormData();
+            fd.append("file", file);
+            const r = await fetch("/api/device-management/upload", { method: "POST", body: fd });
+            const j = await r.json();
+            if (!j.ok) throw new Error(j.message || `HTTP ${r.status}`);
+            alert(`✅ Sync complete\n\nLaptops: ${j.laptops_count}\nSIM Cards: ${j.sims_count}`);
+            await load();
+        } catch (err) {
+            alert(`❌ Upload failed:\n\n${err.message}`);
+            console.error(err);
+        } finally {
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = origText;
+            uploadInput.value = "";   // reset so same file can be uploaded again
+        }
+    });
+}
 
 load();

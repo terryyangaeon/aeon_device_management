@@ -6,8 +6,10 @@ independently.
 Env vars:
   DATABASE_URL   required, e.g. postgresql://root:pwd@host:5432/zeabur
   PORT           optional, default 8080
-  ADMIN_PASSWORD gates the /config page
+  ADMIN_PASSWORD gates the /config page (DB connection settings — separate from accounts below)
   SYNC_TOKEN     shared secret for POST /api/device-management/sync (Power Automate)
+  BOOTSTRAP_ADMIN_EMAIL     seeds one admin account on first run (default itdept@aeondelightasia.com)
+  BOOTSTRAP_ADMIN_PASSWORD  password for that seeded account — required for the seed to happen
 """
 import json
 import os
@@ -16,7 +18,8 @@ from datetime import datetime, timezone
 
 from flask import Flask, render_template, jsonify, request, session, redirect, url_for
 
-import db as dbmod   # engine-aware connection layer (db.py)
+import db as dbmod         # engine-aware connection layer (db.py)
+import accounts as acctmod  # app-level accounts + business-unit permission control
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -30,9 +33,38 @@ SYNC_TOKEN     = os.environ.get("SYNC_TOKEN", "")
 query = dbmod.query
 
 
+# ── Site derivation (must mirror device_management.js categoryToSite/simSite,
+#    so server-side filtering matches what the site pills already show) ─────
+
+_SITE_ALIASES = {"MC6": "BO"}   # SIM "MC6" == laptop "BO" (same site, different code)
+
+
+def _laptop_site(category):
+    if not category:
+        return None
+    cat = str(category).strip()
+    if cat == "ADG-HK-BO":
+        return "BO"
+    if cat.startswith("ADG-HK-Site-"):
+        return cat[len("ADG-HK-Site-"):]
+    if cat.startswith("ADG-HK-"):
+        return cat[len("ADG-HK-"):]
+    return cat
+
+
+def _sim_site(contract_site):
+    if not contract_site:
+        return None
+    s = str(contract_site).strip()
+    return _SITE_ALIASES.get(s, s)
+
+
 # ── Device Management (read) ────────────────────────────────────────
 
-def fetch_device_management():
+def fetch_device_management(allowed_sites=None):
+    """allowed_sites=None means unrestricted (admin). Otherwise only rows
+    whose derived site is in that set are returned — enforced here, not just
+    hidden client-side, so a scoped account can't read other sites via the API."""
     laptops = query("""
         SELECT serial_number, device_name, unique_device, enrollment_date,
                manufacturer, model, category, primary_user_upn,
@@ -74,9 +106,16 @@ def fetch_device_management():
                     out[k] = str(v)
         return out
 
+    laptops = [serialise(r) for r in laptops]
+    sims = [serialise(r) for r in sims]
+
+    if allowed_sites is not None:
+        laptops = [r for r in laptops if _laptop_site(r["category"]) in allowed_sites]
+        sims = [r for r in sims if _sim_site(r["contract_site"]) in allowed_sites]
+
     return {
-        "laptops":  [serialise(r) for r in laptops],
-        "sims":     [serialise(r) for r in sims],
+        "laptops":  laptops,
+        "sims":     sims,
         "summary": {
             "total_laptops":   len(laptops),
             "spared_laptops":  sum(1 for r in laptops if (r["primary_user_display_name"] or "").strip().lower() in ("", "spare", "spared", "-")),
@@ -226,6 +265,7 @@ def api_devmgmt_sync():
 # ── Device Management (manual Excel upload from dashboard UI) ───────
 
 @app.route("/api/device-management/upload", methods=["POST"])
+@acctmod.admin_required
 def api_devmgmt_upload():
     f = request.files.get("file")
     if f is None or not f.filename:
@@ -247,14 +287,18 @@ def api_devmgmt_upload():
 # ── HTTP routes ─────────────────────────────────────────────────────
 
 @app.route("/")
+@acctmod.login_required
 def device_management():
-    return render_template("device_management.html")
+    return render_template("device_management.html", user=acctmod.current_user())
 
 
 @app.route("/api/device-management")
+@acctmod.login_required
 def api_devmgmt_read():
     try:
-        return jsonify({"ok": True, "data": fetch_device_management()})
+        user = acctmod.current_user()
+        allowed = None if user["role"] == "admin" else set(user["sites"])
+        return jsonify({"ok": True, "data": fetch_device_management(allowed)})
     except Exception as e:
         log.exception("device-management read failed")
         return jsonify({"ok": False, "message": str(e)}), 500
@@ -263,6 +307,106 @@ def api_devmgmt_read():
 @app.route("/api/health")
 def api_health():
     return jsonify({"ok": True, "ts": datetime.now(timezone.utc).isoformat()})
+
+
+# ── Accounts: sign-in, session, self-service password change ───────
+
+@app.route("/login", methods=["GET"])
+def login_page():
+    acctmod.ensure_schema()
+    if acctmod.current_user():
+        return redirect(url_for("device_management"))
+    return render_template("login.html")
+
+
+@app.route("/api/auth/login", methods=["POST"])
+def api_auth_login():
+    acctmod.ensure_schema()
+    payload = request.get_json(silent=True) or {}
+    user = acctmod.verify_login(payload.get("email"), payload.get("password"))
+    if not user:
+        return jsonify({"ok": False, "message": "Wrong email or password."}), 401
+    acctmod.login_session(user)
+    return jsonify({"ok": True, "user": user})
+
+
+@app.route("/api/auth/logout", methods=["POST"])
+def api_auth_logout():
+    acctmod.logout_session()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/auth/me")
+def api_auth_me():
+    user = acctmod.current_user()
+    if not user:
+        return jsonify({"ok": False, "message": "Not signed in"}), 401
+    return jsonify({"ok": True, "user": user})
+
+
+@app.route("/api/auth/change-password", methods=["POST"])
+@acctmod.login_required
+def api_auth_change_password():
+    payload = request.get_json(silent=True) or {}
+    user = acctmod.current_user()
+    try:
+        acctmod.set_own_password(user["email"], payload.get("current_password"), payload.get("new_password"))
+        return jsonify({"ok": True})
+    except ValueError as e:
+        return jsonify({"ok": False, "message": str(e)}), 400
+
+
+# ── Accounts: management page (admin-gated) ─────────────────────────
+
+@app.route("/accounts")
+@acctmod.admin_required
+def accounts_page():
+    return render_template("account_management.html", user=acctmod.current_user())
+
+
+@app.route("/api/accounts")
+@acctmod.admin_required
+def api_accounts_list():
+    return jsonify({"ok": True, "accounts": acctmod.list_accounts(), "sites": acctmod.SITES})
+
+
+@app.route("/api/accounts", methods=["POST"])
+@acctmod.admin_required
+def api_accounts_create():
+    payload = request.get_json(silent=True) or {}
+    try:
+        user = acctmod.create_account(
+            payload.get("email"), payload.get("name"), payload.get("password"),
+            payload.get("role") or "user", payload.get("sites") or [],
+        )
+        return jsonify({"ok": True, "account": user})
+    except ValueError as e:
+        return jsonify({"ok": False, "message": str(e)}), 400
+
+
+@app.route("/api/accounts/<email>", methods=["PUT"])
+@acctmod.admin_required
+def api_accounts_update(email):
+    payload = request.get_json(silent=True) or {}
+    try:
+        user = acctmod.update_account(
+            email, payload.get("name"), payload.get("role") or "user",
+            payload.get("active", True), payload.get("sites") or [],
+            password=payload.get("password") or None,
+        )
+        return jsonify({"ok": True, "account": user})
+    except ValueError as e:
+        return jsonify({"ok": False, "message": str(e)}), 400
+
+
+@app.route("/api/accounts/<email>", methods=["DELETE"])
+@acctmod.admin_required
+def api_accounts_delete(email):
+    me = acctmod.current_user()
+    if str(email).strip().lower() == me["email"]:
+        return jsonify({"ok": False, "message": "You can't delete your own account."}), 400
+    acctmod.delete_account(email)
+    return jsonify({"ok": True})
 
 
 # ── Configuration page (admin-gated) ────────────────────────────────
