@@ -8,6 +8,8 @@ Env vars:
   SYNC_TOKEN     shared secret for POST /api/device-management/sync (Power Automate)
   BOOTSTRAP_ADMIN_EMAIL     seeds one admin account on first run (default itdept@aeondelightasia.com)
   BOOTSTRAP_ADMIN_PASSWORD  password for that seeded account — required for the seed to happen
+  EMBEDDED_IN_IFRAME        set truthy when embedded in OneView's iframe — needed for the
+                            session cookie (login, DB config) to survive third-party framing
 """
 import json
 import os
@@ -24,6 +26,18 @@ log = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET", "dev-secret-change-me")
+
+# When embedded inside OneView's iframe (aeon-oneview.zeabur.app), browsers
+# treat this app as a third-party site and block the session cookie unless
+# SameSite=None + Secure are set. Default OFF so local http://localhost dev
+# keeps working. Zeabur prod: set EMBEDDED_IN_IFRAME=1 in Variables.
+_iframe_flag = (os.environ.get("EMBEDDED_IN_IFRAME") or "").strip().lower()
+if _iframe_flag in ("1", "true", "yes", "on", "y", "t"):
+    app.config["SESSION_COOKIE_SAMESITE"] = "None"
+    app.config["SESSION_COOKIE_SECURE"]   = True
+    log.info("Session cookies: SameSite=None; Secure (iframe-embed mode)")
+else:
+    log.info(f"Session cookies: default SameSite=Lax (EMBEDDED_IN_IFRAME={_iframe_flag!r})")
 
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin")
 SYNC_TOKEN     = os.environ.get("SYNC_TOKEN", "")
