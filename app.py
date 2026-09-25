@@ -379,7 +379,7 @@ def accounts_page():
 @app.route("/api/accounts")
 @acctmod.admin_required
 def api_accounts_list():
-    return jsonify({"ok": True, "accounts": acctmod.list_accounts(), "sites": acctmod.SITES})
+    return jsonify({"ok": True, "accounts": acctmod.list_accounts(), "sites": acctmod.list_business_units(active_only=True)})
 
 
 @app.route("/api/accounts", methods=["POST"])
@@ -448,8 +448,42 @@ def config_logout():
 def config_page():
     if not _is_admin():
         return redirect(url_for("config_login"))
+    acctmod.ensure_schema()
     cfg = dbmod.load_config()
     return render_template("db_config.html", cfg=cfg)
+
+
+# ── Configuration: Business Unit management (same admin gate as /config) ───
+
+@app.route("/api/config/business-units")
+def api_cfg_bu_list():
+    if not _is_admin():
+        return jsonify({"ok": False, "message": "unauthorized"}), 401
+    return jsonify({"ok": True, "business_units": acctmod.list_business_units()})
+
+
+@app.route("/api/config/business-units", methods=["POST"])
+def api_cfg_bu_create():
+    if not _is_admin():
+        return jsonify({"ok": False, "message": "unauthorized"}), 401
+    payload = request.get_json(silent=True) or {}
+    try:
+        acctmod.create_business_unit(payload.get("code"), payload.get("name"))
+        return jsonify({"ok": True})
+    except ValueError as e:
+        return jsonify({"ok": False, "message": str(e)}), 400
+
+
+@app.route("/api/config/business-units/<code>", methods=["PUT"])
+def api_cfg_bu_update(code):
+    if not _is_admin():
+        return jsonify({"ok": False, "message": "unauthorized"}), 401
+    payload = request.get_json(silent=True) or {}
+    try:
+        acctmod.update_business_unit(code, payload.get("name"), payload.get("active", True))
+        return jsonify({"ok": True})
+    except ValueError as e:
+        return jsonify({"ok": False, "message": str(e)}), 400
 
 
 @app.route("/api/config/test", methods=["POST"])

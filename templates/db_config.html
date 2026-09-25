@@ -8,7 +8,48 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <style>
     html, body { overflow-y: auto; }
-    .cfg-wrap { max-width: 900px; margin: 20px auto; padding: 0 20px; }
+
+    /* ── Sidebar layout (same pattern as OneView's Configuration page) ── */
+    .layout { display: flex; align-items: stretch; }
+    .sidebar { width: 240px; flex-shrink: 0; background: #1e3a5f; padding: 16px 12px; }
+    .side-item {
+      display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+      background: none; border: 0; padding: 11px 14px; border-radius: 10px;
+      font-size: 14px; font-weight: 600; color: #fff; cursor: pointer; margin-bottom: 4px;
+    }
+    .side-item:hover { background: rgba(255,255,255,.12); }
+    .side-item.active { background: #FFCC00; color: #1c1917; }
+    .side-item svg { color: currentColor; flex-shrink: 0; }
+    .content { flex: 1; min-width: 0; padding: 20px 24px 60px; }
+    .cfg-view[hidden] { display: none !important; }
+
+    /* ── Business Unit table ── */
+    .head-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .pagetitle { font-size: 18px; font-weight: 800; color: #90207a; margin: 0; }
+    .btn { padding: 9px 16px; border: 1px solid transparent; border-radius: 8px; font-weight: 600; cursor: pointer; font: inherit; }
+    .btn.primary { background: #FFCC00; color: #1c1917; } .btn.primary:hover { background: #f0c000; }
+    .btn.ghost { background: #fff; border-color: #d6d3d1; color: #44403c; } .btn.ghost:hover { background: #fafaf9; }
+    .tablewrap { overflow-x: auto; background: #fff; border: 1px solid #e7e5e4; border-radius: 12px; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th { background: #1e3a5f; color: #fff; text-align: left; padding: 12px 14px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+    tbody td { padding: 12px 14px; border-bottom: 1px solid #f0eee6; font-size: 13px; vertical-align: middle; }
+    tbody tr:last-child td { border-bottom: 0; }
+    .code-badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; background: #dbeafe; color: #1e3a8a; }
+    .st { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+    .st.on { background: #dcfce7; color: #14532d; } .st.off { background: #f5f5f4; color: #a8a29e; }
+    .tbl-btn { background: #FFCC00; color: #1c1917; border: 0; border-radius: 8px; padding: 7px 14px; font-weight: 700; cursor: pointer; }
+    .tbl-btn:hover { background: #f0c000; }
+    .fieldlbl { font-size: 11px; color: #78716c; margin: 10px 0 4px; text-transform: uppercase; letter-spacing: .04em; }
+    .modal-box input[type=text] { width: 100%; padding: 9px 12px; border: 1px solid #d6d3d1; border-radius: 8px; font: inherit; box-sizing: border-box; }
+    .chk { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .chk input { width: auto; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(15,12,8,.45); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 1500; }
+    .modal-box { background: #fff; border-radius: 14px; padding: 24px; width: 100%; max-width: 420px; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+    .modal-title { font-size: 18px; font-weight: 800; color: #90207a; margin-bottom: 6px; }
+    .modal-acts { display: flex; align-items: center; gap: 8px; margin-top: 20px; }
+    .toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(20px); background: #1c1917; color: #fff; padding: 11px 18px; border-radius: 10px; font-size: 13px; box-shadow: 0 10px 30px rgba(0,0,0,.25); opacity: 0; transition: .2s; z-index: 1600; }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
     .cfg-card {
       background: #fff; border: 1px solid #e5e7eb; border-radius: 8px;
       padding: 20px 24px; margin-bottom: 16px;
@@ -107,14 +148,43 @@
   <div class="page-toolbar">
     <div class="page-title">
       <h1>設定 Configuration</h1>
-      <h2>Database Connection</h2>
+      <h2 id="section-subtitle">Business Unit</h2>
     </div>
     <div class="page-actions">
       <div class="muted">Logged in as admin</div>
     </div>
   </div>
 
-  <div class="cfg-wrap">
+  <div class="layout">
+    <nav class="sidebar">
+      <button type="button" class="side-item active" data-view="bu">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>
+        <span>Business Unit</span>
+      </button>
+      <button type="button" class="side-item" data-view="db">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+        <span>Database</span>
+      </button>
+    </nav>
+
+    <div class="content">
+
+      <!-- ── Business Unit ─────────────────────────────────────── -->
+      <div id="view-bu" class="cfg-view">
+        <div class="head-row">
+          <h1 class="pagetitle">Business Unit · 業務單位</h1>
+          <button class="btn primary" id="addBuBtn">+ Add Business Unit</button>
+        </div>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Business Unit</th><th>Code</th><th>Status</th><th style="text-align:right;">Actions</th></tr></thead>
+            <tbody id="buRows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── Database ──────────────────────────────────────────── -->
+      <div id="view-db" class="cfg-view" hidden>
 
     {% if cfg.source == "env" %}
     <div class="cfg-banner info">
@@ -239,10 +309,116 @@
       </ul>
     </div>
 
-  </div>
+      </div><!-- /view-db -->
+    </div><!-- /content -->
+  </div><!-- /layout -->
+
+  <!-- Add/Edit Business Unit modal -->
+  <div class="modal-overlay" id="buModal" hidden><div class="modal-box">
+    <div class="modal-title" id="bumTitle">Add Business Unit</div>
+    <div class="fieldlbl">Name</div><input type="text" id="buName" placeholder="e.g. Prince of Wales Hospital">
+    <div class="fieldlbl">Code</div><input type="text" id="buCode" placeholder="e.g. PWH">
+    <label class="chk" style="margin-top:12px;"><input type="checkbox" id="buActive" checked> <span>Active</span></label>
+    <div class="modal-acts">
+      <span style="flex:1;"></span>
+      <button class="btn ghost" id="buCancel">Cancel</button><button class="btn primary" id="buSave">Save</button>
+    </div>
+  </div></div>
+
+  <div class="toast" id="cfgToast"></div>
 
   <script src="{{ url_for('static', filename='navbar.js') }}"></script>
   <script>
+    // ── Sidebar view switching ──────────────────────────────────
+    const VIEW_LABELS = { bu: "Business Unit", db: "Database Connection" };
+    document.querySelectorAll(".side-item").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".side-item").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        const view = btn.dataset.view;
+        document.getElementById("view-bu").hidden = view !== "bu";
+        document.getElementById("view-db").hidden = view !== "db";
+        document.getElementById("section-subtitle").textContent = VIEW_LABELS[view];
+      });
+    });
+
+    // ── Business Unit management ────────────────────────────────
+    let businessUnits = [];
+    let editingCode = null;
+    const buToastEl = document.getElementById("cfgToast");
+    let buToastTimer;
+    function buToast(msg) {
+      buToastEl.textContent = msg; buToastEl.classList.add("show");
+      clearTimeout(buToastTimer); buToastTimer = setTimeout(() => buToastEl.classList.remove("show"), 2600);
+    }
+    function escHtml(s) { return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[c])); }
+
+    function renderBuRows() {
+      document.getElementById("buRows").innerHTML = businessUnits.map((bu) => `
+        <tr data-code="${escHtml(bu.code)}">
+          <td>${escHtml(bu.name)}</td>
+          <td><span class="code-badge">${escHtml(bu.code)}</span></td>
+          <td><span class="st ${bu.active ? "on" : "off"}">${bu.active ? "Active" : "Inactive"}</span></td>
+          <td style="text-align:right;"><button class="tbl-btn bu-edit">Edit</button></td>
+        </tr>
+      `).join("");
+    }
+    document.getElementById("buRows").addEventListener("click", (e) => {
+      if (!e.target.closest(".bu-edit")) return;
+      const code = e.target.closest("tr").dataset.code;
+      openBuModal(businessUnits.find((b) => b.code === code));
+    });
+    document.getElementById("addBuBtn").addEventListener("click", () => openBuModal(null));
+
+    function openBuModal(bu) {
+      editingCode = bu ? bu.code : null;
+      document.getElementById("bumTitle").textContent = bu ? "Edit Business Unit" : "Add Business Unit";
+      document.getElementById("buName").value = bu ? bu.name : "";
+      const codeEl = document.getElementById("buCode");
+      codeEl.value = bu ? bu.code : "";
+      codeEl.readOnly = !!bu;
+      document.getElementById("buActive").checked = bu ? !!bu.active : true;
+      document.getElementById("buModal").hidden = false;
+    }
+    function closeBuModal() { document.getElementById("buModal").hidden = true; editingCode = null; }
+    document.getElementById("buCancel").addEventListener("click", closeBuModal);
+    document.getElementById("buModal").addEventListener("click", (e) => { if (e.target.id === "buModal") closeBuModal(); });
+
+    document.getElementById("buSave").addEventListener("click", async () => {
+      const name = document.getElementById("buName").value.trim();
+      const code = document.getElementById("buCode").value.trim().toUpperCase();
+      const active = document.getElementById("buActive").checked;
+      if (!name) { buToast("Name is required."); return; }
+      if (!code) { buToast("Code is required."); return; }
+      try {
+        const url = editingCode ? `/api/config/business-units/${encodeURIComponent(editingCode)}` : "/api/config/business-units";
+        const r = await fetch(url, {
+          method: editingCode ? "PUT" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, code, active }),
+        });
+        const j = await r.json();
+        if (!j.ok) throw new Error(j.message || "Request failed");
+        closeBuModal();
+        await loadBusinessUnits();
+        buToast("Business unit saved.");
+      } catch (e) {
+        buToast(e.message);
+      }
+    });
+
+    async function loadBusinessUnits() {
+      try {
+        const r = await fetch("/api/config/business-units");
+        const j = await r.json();
+        businessUnits = j.business_units || [];
+        renderBuRows();
+      } catch (e) {
+        buToast("Could not load business units.");
+      }
+    }
+    loadBusinessUnits();
+
     function readForm() {
       const cfg = {
         engine:      document.getElementById("engine").value,

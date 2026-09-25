@@ -13,18 +13,20 @@ import db as dbmod
 
 query = dbmod.query
 
-# Site codes shown on the dashboard's location pills (device_management.js SITE_NAMES).
-SITES = [
-    {"code": "BO",   "name": "Back Office 總辦工室"},
-    {"code": "CHT",  "name": "Cross Harbour Tunnel 紅磡海底隧道"},
-    {"code": "KTT",  "name": "Kai Tak Tunnel 啓德隧道"},
-    {"code": "KWH",  "name": "Kwong Wah Hospital 廣華醫院"},
-    {"code": "LRT",  "name": "Lion Rock Tunnel 獅子山隧道"},
-    {"code": "PWH",  "name": "Prince of Wales 威爾斯親王醫院"},
-    {"code": "SMT",  "name": "Shing Mun Tunnel 城門隧道"},
-    {"code": "TKOT", "name": "Tseung Kwan O Tunnel 將軍澳隧道"},
+# Seeded once on first run — the same 8 codes device_management.js's pills
+# already derive from laptops.category / sim_cards.contract_site. Business
+# units are now a real table (managed from Configuration → Business Unit),
+# this is only the starting set so existing deploys don't lose grants.
+_SEED_BUSINESS_UNITS = [
+    ("BO",   "Back Office 總辦工室"),
+    ("CHT",  "Cross Harbour Tunnel 紅磡海底隧道"),
+    ("KTT",  "Kai Tak Tunnel 啓德隧道"),
+    ("KWH",  "Kwong Wah Hospital 廣華醫院"),
+    ("LRT",  "Lion Rock Tunnel 獅子山隧道"),
+    ("PWH",  "Prince of Wales 威爾斯親王醫院"),
+    ("SMT",  "Shing Mun Tunnel 城門隧道"),
+    ("TKOT", "Tseung Kwan O Tunnel 將軍澳隧道"),
 ]
-SITE_CODES = {s["code"] for s in SITES}
 
 
 _schema_ready = False
@@ -51,8 +53,28 @@ def ensure_schema():
             PRIMARY KEY (email, site_code)
         )
     """)
+    query("""
+        CREATE TABLE IF NOT EXISTS business_units (
+            code        TEXT PRIMARY KEY,
+            name        TEXT NOT NULL,
+            active      BOOLEAN NOT NULL DEFAULT TRUE,
+            sort_order  INTEGER NOT NULL DEFAULT 0
+        )
+    """)
     _bootstrap_admin()
+    _seed_business_units()
     _schema_ready = True
+
+
+def _seed_business_units():
+    existing = query("SELECT COUNT(*) AS c FROM business_units", fetchone=True)
+    if existing and existing["c"] > 0:
+        return
+    for i, (code, name) in enumerate(_SEED_BUSINESS_UNITS):
+        query(
+            "INSERT INTO business_units (code, name, active, sort_order) VALUES (%s,%s,TRUE,%s) ON CONFLICT (code) DO NOTHING",
+            (code, name, i),
+        )
 
 
 def _bootstrap_admin():
@@ -147,10 +169,45 @@ def update_account(email, name, role, active, sites, password=None):
 
 def _set_sites(email, sites):
     email = str(email).strip().lower()
-    sites = [s for s in (sites or []) if s in SITE_CODES]
+    known = {bu["code"] for bu in list_business_units()}
+    sites = [s for s in (sites or []) if s in known]
     query("DELETE FROM account_sites WHERE email = %s", (email,))
     for code in sites:
         query("INSERT INTO account_sites (email, site_code) VALUES (%s,%s) ON CONFLICT DO NOTHING", (email, code))
+
+
+# ── Business units (sites) — managed from Configuration → Business Unit ────
+
+def list_business_units(active_only=False):
+    if active_only:
+        rows = query("SELECT code, name, active FROM business_units WHERE active = TRUE ORDER BY sort_order, code")
+    else:
+        rows = query("SELECT code, name, active FROM business_units ORDER BY sort_order, code")
+    return [{"code": r["code"], "name": r["name"], "active": r["active"]} for r in rows]
+
+
+def create_business_unit(code, name):
+    code = str(code or "").strip().upper()
+    name = str(name or "").strip()
+    if not code:
+        raise ValueError("Code is required.")
+    if not name:
+        raise ValueError("Name is required.")
+    if query("SELECT 1 FROM business_units WHERE code = %s", (code,), fetchone=True):
+        raise ValueError("A business unit with this code already exists.")
+    max_order = query("SELECT COALESCE(MAX(sort_order), 0) AS m FROM business_units", fetchone=True)["m"]
+    query("INSERT INTO business_units (code, name, active, sort_order) VALUES (%s,%s,TRUE,%s)",
+          (code, name, max_order + 1))
+
+
+def update_business_unit(code, name, active):
+    code = str(code or "").strip().upper()
+    name = str(name or "").strip()
+    if not query("SELECT 1 FROM business_units WHERE code = %s", (code,), fetchone=True):
+        raise ValueError("Business unit not found.")
+    if not name:
+        raise ValueError("Name is required.")
+    query("UPDATE business_units SET name=%s, active=%s WHERE code=%s", (name, bool(active), code))
 
 
 def delete_account(email):
