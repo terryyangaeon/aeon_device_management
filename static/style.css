@@ -16,6 +16,12 @@ body {
 
 .muted { color: #6b7280; font-size: 10px; }
 
+/* Embedded inside another site's iframe (e.g. OneView, which already shows
+   its own navbar + a "Back to OneView" bar above us) — collapse ours so the
+   two don't stack. The class is set by an inline <script> in <head>, before
+   the header paints, so there's no flash of it before it disappears. */
+html.in-iframe header.top { display: none; }
+
 /* ── Header — identical navbar to OneView: yellow bar, logo + burger only ── */
 header.top {
     display: flex;
