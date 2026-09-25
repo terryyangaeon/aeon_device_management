@@ -41,8 +41,8 @@ const BASE_TITLE_ZH = "電腦及SIM卡管理";
 const BASE_TITLE_EN = "Laptops & SIM Card Management";
 
 function updateTitle() {
-    const h1 = document.querySelector(".header-center h1");
-    const h2 = document.querySelector(".header-center h2");
+    const h1 = document.querySelector(".page-title h1");
+    const h2 = document.querySelector(".page-title h2");
     if (!h1 || !h2) return;
 
     if (!selectedSite) {
