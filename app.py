@@ -1,7 +1,5 @@
 """
 AEON Device Management — Laptops & SIM Card tracker.
-Split out of the Smart Toilet IoT dashboard so it can be deployed and scaled
-independently.
 
 Env vars:
   DATABASE_URL   required, e.g. postgresql://root:pwd@host:5432/zeabur

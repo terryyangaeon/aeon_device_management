@@ -1,10 +1,10 @@
-"""Database connection layer for the Smart Toilet dashboard.
+"""Database connection layer for the Device Management app.
 
 Supports:
   - PostgreSQL (via psycopg2, always available)
   - Microsoft SQL Server (via pyodbc; requires ODBC Driver 17/18)
 
-The active connection is defined by dashboard/db_config.json (created by the
+The active connection is defined by db_config.json (created by the
 Configuration page). When that file is absent, we fall back to the DATABASE_URL
 environment variable — so a fresh deploy behaves exactly like before.
 
