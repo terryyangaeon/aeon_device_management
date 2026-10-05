@@ -428,6 +428,7 @@ def _is_admin():
 
 
 @app.route("/config/login", methods=["GET", "POST"])
+@acctmod.admin_required
 def config_login():
     if request.method == "POST":
         pw = (request.form.get("password") or "").strip()
@@ -445,6 +446,7 @@ def config_logout():
 
 
 @app.route("/config")
+@acctmod.admin_required
 def config_page():
     if not _is_admin():
         return redirect(url_for("config_login"))
@@ -456,6 +458,7 @@ def config_page():
 # ── Configuration: Business Unit management (same admin gate as /config) ───
 
 @app.route("/api/config/business-units")
+@acctmod.admin_required
 def api_cfg_bu_list():
     if not _is_admin():
         return jsonify({"ok": False, "message": "unauthorized"}), 401
@@ -463,6 +466,7 @@ def api_cfg_bu_list():
 
 
 @app.route("/api/config/business-units", methods=["POST"])
+@acctmod.admin_required
 def api_cfg_bu_create():
     if not _is_admin():
         return jsonify({"ok": False, "message": "unauthorized"}), 401
@@ -475,6 +479,7 @@ def api_cfg_bu_create():
 
 
 @app.route("/api/config/business-units/<code>", methods=["PUT"])
+@acctmod.admin_required
 def api_cfg_bu_update(code):
     if not _is_admin():
         return jsonify({"ok": False, "message": "unauthorized"}), 401
@@ -487,6 +492,7 @@ def api_cfg_bu_update(code):
 
 
 @app.route("/api/config/test", methods=["POST"])
+@acctmod.admin_required
 def api_config_test():
     if not _is_admin():
         return jsonify({"ok": False, "message": "unauthorized"}), 401
@@ -495,6 +501,7 @@ def api_config_test():
 
 
 @app.route("/api/config/save", methods=["POST"])
+@acctmod.admin_required
 def api_config_save():
     if not _is_admin():
         return jsonify({"ok": False, "message": "unauthorized"}), 401
@@ -513,6 +520,7 @@ def api_config_save():
 
 
 @app.route("/api/config/reset", methods=["POST"])
+@acctmod.admin_required
 def api_config_reset():
     if not _is_admin():
         return jsonify({"ok": False, "message": "unauthorized"}), 401
