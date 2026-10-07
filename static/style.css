@@ -43,9 +43,20 @@ header.top {
     text-decoration: none;
 }
 .brand img { height: 54px; width: auto; display: block; }
-.brand .brand-text { display: flex; flex-direction: column; line-height: 1.15; }
-.brand .brand-text .l2 { font-size: 13px; font-weight: 700; color: #90207a; }
+.brand .brand-text {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    line-height: 1.15;
+    border-left: 2px solid rgba(28,25,23,.18);
+    padding-left: 18px;
+}
+.brand .brand-text .l1 { font-size: 18px; font-weight: 700; color: #1c1917; letter-spacing: .02em; }
+.brand .brand-text .l2 { font-size: 13px; font-weight: 600; color: #44403c; }
 .brand:focus-visible { outline: 3px solid #90207a; outline-offset: 3px; border-radius: 6px; }
+@media (max-width: 560px) {
+    .brand .brand-text { border-left-width: 1px; padding-left: 12px; }
+}
 
 /* Burger menu (identical pattern to OneView) */
 .menu-wrap { position: relative; }
